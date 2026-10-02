@@ -82,6 +82,33 @@ jobs:
       - name: Run Unit Tests
         run: dart test
 
+  android:
+    name: Android Build (${{ matrix.abi }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # No release carries a prebuilt Android library, so hook/build.dart
+        # always builds these from source. x86 is left out: its link misses
+        # bn_mul_mont_words, because sources.cmake lists x86-mont-linux.S
+        # under x86_64.
+        abi: [armeabi-v7a, arm64-v8a, x86_64, riscv64]
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Build BoringSSL with the NDK
+        env:
+          ABI: ${{ matrix.abi }}
+        run: |
+          cmake -S src -B "build/android-$ABI" -G Ninja \
+            -DCMAKE_TOOLCHAIN_FILE="$ANDROID_NDK_LATEST_HOME/build/cmake/android.toolchain.cmake" \
+            -DANDROID_ABI="$ABI" \
+            -DANDROID_PLATFORM=android-24 \
+            -DCMAKE_BUILD_TYPE=Release
+          cmake --build "build/android-$ABI"
+
   conformance:
     name: Project Wycheproof Conformance
     runs-on: ubuntu-latest
