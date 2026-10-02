@@ -91,6 +91,9 @@ else()
   # Android) or -lstdc++ when linking CXX object files with LINKER_LANGUAGE C.
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-exceptions -fno-rtti")
   set(CMAKE_CXX_IMPLICIT_LINK_LIBRARIES "")
+  # libc++ headers call into the C++ runtime where they would throw. Replace
+  # that call, see libcxx_verbose_abort.h.
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -include \"${CMAKE_CURRENT_SOURCE_DIR}/libcxx_verbose_abort.h\"")
   if(NOT APPLE)
     # One section per function and variable, so the link hook can drop the
     # unused ones. Mach-O linkers already do this per symbol.

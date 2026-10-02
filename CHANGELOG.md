@@ -1,6 +1,9 @@
 ## 0.4.2-wip
 
 - Update BoringSSL to e98a6564.
+- Fixed the link of `libbssl_dart.so` on Android, which failed on an undefined
+  `std::__libcpp_verbose_abort`: for `armeabi-v7a` in 0.4.1, and for every ABI
+  since the BoringSSL update above.
 
 ## 0.4.1
 
