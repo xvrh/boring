@@ -10,13 +10,6 @@ include(../third_party/boringssl/sources.cmake)
 
 # Symbol prefixing: all BoringSSL symbols become bssl_dart_<symbol>
 add_definitions(-DBORINGSSL_PREFIX=bssl_dart)
-# Keep BoringSSL free of C++ runtime symbols (such as operator delete from
-# virtual destructors), since CMake and hook/link.dart (CLinker) link the
-# library with the C compiler driver. Also clear CMake's implicit C++ link
-# libraries so CMake does not pass -lc++ (e.g. libc++_shared.so on Android) or
-# -lstdc++ when linking CXX object files with LINKER_LANGUAGE C.
-add_definitions(-DBORINGSSL_TEMPORARY_NO_CXX_RUNTIME)
-set(CMAKE_CXX_IMPLICIT_LINK_LIBRARIES "")
 
 # Architecture and platform detection.
 #
@@ -88,8 +81,8 @@ if(MSVC)
   set(CMAKE_CXX_FLAGS "-utf-8 -W4 -WX -Gy -Gw -GR- ${MSVC_DISABLED_WARNINGS_STR}")
   set(CMAKE_RUNTIME_OUTPUT_DIRECTORY $<1:${CMAKE_BINARY_DIR}>)
 else()
-  # BoringSSL doesn't need the C++ runtime (see BORINGSSL_ALLOW_CXX_RUNTIME
-  # upstream), so the libraries don't depend on it.
+  # As BoringSSL builds libcrypto. It still needs the C++ runtime, which the
+  # dynamic library links statically, see below.
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-exceptions -fno-rtti")
   if(NOT APPLE)
     # One section per function and variable, so the link hook can drop the
@@ -139,13 +132,18 @@ set_target_properties(
 add_library(bssl_dart SHARED $<TARGET_OBJECTS:bssl_dart_objects>)
 add_library(bssl_dart_static STATIC $<TARGET_OBJECTS:bssl_dart_objects>)
 
-set_target_properties(
-  bssl_dart_objects
-  bssl_dart
-  bssl_dart_static
-  PROPERTIES
-  LINKER_LANGUAGE C
-)
+# BoringSSL depends on the C++ runtime. The dynamic library carries its own
+# copy, linked statically with its symbols kept private, rather than load a
+# libc++ or libstdc++ the application may not have. The NDK links libc++
+# statically by default (ANDROID_STL=c++_static), and Apple platforms always
+# have libc++. Undefined symbols fail the link, so a missing runtime function
+# cannot reach the dynamic loader. hook/link.dart links the same way.
+if(NOT MSVC AND NOT APPLE)
+  if(NOT ANDROID)
+    target_link_options(bssl_dart PRIVATE -static-libstdc++ -static-libgcc)
+  endif()
+  target_link_options(bssl_dart PRIVATE -Wl,--exclude-libs,ALL -Wl,--no-undefined)
+endif()
 
 set_target_properties(
   bssl_dart

@@ -1,3 +1,11 @@
+## 0.4.1, with the C++ runtime linked (backport)
+
+- The library now links the C++ runtime, which BoringSSL depends on:
+  statically, with its symbols kept private, except on Apple platforms, which
+  always have libc++. It no longer builds with
+  `BORINGSSL_TEMPORARY_NO_CXX_RUNTIME`. This fixes the `armeabi-v7a` link,
+  which failed on an undefined `std::__libcpp_verbose_abort`.
+
 ## 0.4.1
 
 - Fixed `libbssl_dart.so` dynamically linking `libc++_shared.so` on Android when
