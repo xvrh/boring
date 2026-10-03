@@ -1,6 +1,14 @@
 ## 0.4.2-wip
 
 - Update BoringSSL to e98a6564.
+- The library now links the C++ runtime, which BoringSSL depends on:
+  statically, with its symbols kept private, except on Apple platforms, which
+  always have libc++. It no longer builds with
+  `BORINGSSL_TEMPORARY_NO_CXX_RUNTIME`. This fixes the Android link, which
+  failed on an undefined `std::__libcpp_verbose_abort`: for `armeabi-v7a` in
+  0.4.1, and for every ABI since the BoringSSL update above. On Linux the
+  library no longer leaves `std::__throw_out_of_range_fmt` undefined, so it
+  also loads with `RTLD_NOW`.
 
 ## 0.4.1
 

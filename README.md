@@ -99,7 +99,7 @@ When linking is enabled (`dart build`, and Flutter profile and release builds), 
 
 - Use `addresses.X` rather than `Native.addressOf(X)` for the address of a function, for example for a `NativeFinalizer`. `Native.addressOf` isn't recorded, so the function would be missing from the library.
 - Without recorded uses, for example with `flutter config --no-enable-record-use`, all functions are kept.
-- Linking requires a C toolchain for the target (Clang or GCC, Xcode, MSVC, or the Android NDK). Without one, for example when cross-compiling, the `fetch` build mode bundles the prebuilt dynamic library instead, which is not tree-shaken, and prints a warning.
+- Linking requires a C toolchain for the target (Clang or GCC, Xcode, MSVC, or the Android NDK), with the static C++ standard library on Linux (`libstdc++.a`, which comes with g++). Without one, for example when cross-compiling, the `fetch` build mode bundles the prebuilt dynamic library instead, which is not tree-shaken, and prints a warning.
 
 ---
 
