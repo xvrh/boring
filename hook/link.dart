@@ -59,12 +59,7 @@ Future<void> main(List<String> args) async {
       );
     } else {
       linkerOptions = LinkerOptions.treeshake(
-        flags: [
-          if (targetOS == OS.android || targetOS == OS.linux) ...[
-            '--exclude-libs,ALL',
-            '--no-undefined',
-          ],
-        ],
+        flags: _cxxRuntimeLinkerFlags[targetOS] ?? const [],
         symbolsToKeep: symbols,
       );
     }
@@ -76,6 +71,7 @@ Future<void> main(List<String> args) async {
         assetName: 'boring.dart',
         sources: [staticLibraryFile.toFilePath()],
         frameworks: const [],
+        flags: [if (targetOS == OS.linux) '-static-libgcc'],
         libraries: _cxxRuntime[targetOS] ?? const [],
         linkerOptions: linkerOptions,
         linkModePreference: LinkModePreference.dynamic,
@@ -107,6 +103,21 @@ final _cxxRuntime = {
   OS.linux: [':libstdc++.a'],
   OS.iOS: ['c++'],
   OS.macOS: ['c++'],
+};
+
+/// Keeps the statically linked runtime's symbols private, should the version
+/// script be absent because all functions are kept. Android loads libraries
+/// with every symbol bound, so an undefined one fails the link there, as the
+/// NDK's CMake toolchain does. Linux can't: a sysroot with glibc before 2.34
+/// has pthread outside libc, and test/tree_shaking_test.dart checks for
+/// undefined runtime symbols instead.
+final _cxxRuntimeLinkerFlags = {
+  OS.android: [
+    '--exclude-libs,libc++_static.a',
+    '--exclude-libs,libc++abi.a',
+    '--no-undefined',
+  ],
+  OS.linux: ['--exclude-libs,libstdc++.a'],
 };
 
 /// Bundles the pre-built, not tree-shaken, dynamic library after linking the

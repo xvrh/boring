@@ -76,6 +76,12 @@ void main() {
       // With all functions, the library is about 3 MB.
       expect(library.lengthSync(), lessThan(1024 * 1024));
     });
+
+    test(
+      'the library carries the C++ runtime it needs',
+      () => expect(_elfUndefinedCxxSymbols(library.readAsBytesSync()), isEmpty),
+      skip: Platform.isLinux ? null : 'checks the ELF library on Linux',
+    );
   });
 
   group(
@@ -130,6 +136,10 @@ void main() {
         // With all functions, the library is about 3 MB.
         expect(library.lengthSync(), lessThan(1024 * 1024));
       });
+
+      test('the library carries the C++ runtime it needs', () {
+        expect(_elfUndefinedCxxSymbols(library.readAsBytesSync()), isEmpty);
+      });
     },
     skip: Platform.environment['CI'] != 'true' && !_hasAarch64LinuxToolchain()
         ? 'aarch64-linux-gnu-gcc is not installed'
@@ -155,9 +165,28 @@ int _elfMachine(Uint8List bytes) {
   return ByteData.sublistView(bytes).getUint16(18, Endian.little);
 }
 
+/// The C++ runtime functions that a 64-bit little-endian ELF library leaves
+/// for the dynamic loader. Linux allows undefined symbols in a shared
+/// library, so a missing runtime function would only show at load or call
+/// time. Weak references, which may stay unresolved, don't count.
+Set<String> _elfUndefinedCxxSymbols(Uint8List bytes) => {
+  for (final (:name, :defined, :weak) in _elfDynamicSymbols(bytes))
+    if (!defined && !weak && RegExp(r'^(_Z|__cxa_|__gxx_)').hasMatch(name))
+      name,
+};
+
 /// Returns the names of all defined symbols in the `.dynsym` section of a
 /// 64-bit little-endian ELF binary.
-Set<String> _elfDefinedDynamicSymbols(Uint8List bytes) {
+Set<String> _elfDefinedDynamicSymbols(Uint8List bytes) => {
+  for (final (:name, :defined, weak: _) in _elfDynamicSymbols(bytes))
+    if (defined) name,
+};
+
+/// The named symbols in the `.dynsym` section of a 64-bit little-endian ELF
+/// binary.
+List<({String name, bool defined, bool weak})> _elfDynamicSymbols(
+  Uint8List bytes,
+) {
   final data = ByteData.sublistView(bytes);
   final shoff = data.getUint64(40, Endian.little);
   final shentsize = data.getUint16(58, Endian.little);
@@ -177,16 +206,22 @@ Set<String> _elfDefinedDynamicSymbols(Uint8List bytes) {
     final strShdr = shoff + strTabIndex * shentsize;
     final strOffset = data.getUint64(strShdr + 24, Endian.little);
 
-    final symbols = <String>{};
+    const stbWeak = 2;
+    final symbols = <({String name, bool defined, bool weak})>[];
     final count = symSize ~/ symEntSize;
     for (var j = 0; j < count; j++) {
       final sym = symOffset + j * symEntSize;
       final stName = data.getUint32(sym, Endian.little);
+      final stInfo = data.getUint8(sym + 4);
       final stShndx = data.getUint16(sym + 6, Endian.little);
-      if (stName == 0 || stShndx == 0) continue;
+      if (stName == 0) continue;
       final start = strOffset + stName;
       final end = bytes.indexOf(0, start);
-      symbols.add(String.fromCharCodes(bytes, start, end));
+      symbols.add((
+        name: String.fromCharCodes(bytes, start, end),
+        defined: stShndx != 0,
+        weak: stInfo >> 4 == stbWeak,
+      ));
     }
     return symbols;
   }
