@@ -136,13 +136,14 @@ add_library(bssl_dart_static STATIC $<TARGET_OBJECTS:bssl_dart_objects>)
 # copy, linked statically with its symbols kept private, rather than load a
 # libc++ or libstdc++ the application may not have. The NDK links libc++
 # statically by default (ANDROID_STL=c++_static), and Apple platforms always
-# have libc++. Undefined symbols fail the link, so a missing runtime function
-# cannot reach the dynamic loader. hook/link.dart links the same way.
+# have libc++. hook/link.dart links the same way.
 if(NOT MSVC AND NOT APPLE)
   if(NOT ANDROID)
     target_link_options(bssl_dart PRIVATE -static-libstdc++ -static-libgcc)
   endif()
-  target_link_options(bssl_dart PRIVATE -Wl,--exclude-libs,ALL -Wl,--no-undefined)
+  # The objects are not in an archive, so only the runtime's symbols stay
+  # private.
+  target_link_options(bssl_dart PRIVATE -Wl,--exclude-libs,ALL)
 endif()
 
 set_target_properties(
