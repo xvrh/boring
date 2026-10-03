@@ -49,15 +49,24 @@ Future<void> main(List<String> args) async {
       );
     }
 
+    final targetOS = input.config.code.targetOS;
     final LinkerOptions linkerOptions;
-    if (input.config.code.targetOS == OS.windows) {
+    if (targetOS == OS.windows) {
       linkerOptions = await _windowsLinkerOptions(
         input,
         staticLibraryFile,
         symbols,
       );
     } else {
-      linkerOptions = LinkerOptions.treeshake(symbolsToKeep: symbols);
+      linkerOptions = LinkerOptions.treeshake(
+        flags: [
+          if (targetOS == OS.android || targetOS == OS.linux) ...[
+            '--exclude-libs,ALL',
+            '--no-undefined',
+          ],
+        ],
+        symbolsToKeep: symbols,
+      );
     }
 
     try {
@@ -67,6 +76,7 @@ Future<void> main(List<String> args) async {
         assetName: 'boring.dart',
         sources: [staticLibraryFile.toFilePath()],
         frameworks: const [],
+        libraries: _cxxRuntime[targetOS] ?? const [],
         linkerOptions: linkerOptions,
         linkModePreference: LinkModePreference.dynamic,
       ).run(
@@ -87,6 +97,17 @@ Future<void> main(List<String> args) async {
     }
   });
 }
+
+/// The C++ runtime that BoringSSL needs, as `-l` arguments for the C
+/// compiler driver, after the static library. Statically linked where the
+/// application may not have it, as src/CMakeLists.txt links the dynamic
+/// library. MSVC links its runtime by default.
+final _cxxRuntime = {
+  OS.android: ['c++_static', 'c++abi'],
+  OS.linux: [':libstdc++.a'],
+  OS.iOS: ['c++'],
+  OS.macOS: ['c++'],
+};
 
 /// Bundles the pre-built, not tree-shaken, dynamic library after linking the
 /// static library failed with [linkError].
