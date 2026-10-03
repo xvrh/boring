@@ -168,11 +168,21 @@ int _elfMachine(Uint8List bytes) {
 /// The C++ runtime functions that a 64-bit little-endian ELF library leaves
 /// for the dynamic loader. Linux allows undefined symbols in a shared
 /// library, so a missing runtime function would only show at load or call
-/// time. Weak references, which may stay unresolved, don't count.
+/// time. Weak references, which may stay unresolved, don't count, nor do the
+/// `__cxa_` functions that glibc itself provides.
 Set<String> _elfUndefinedCxxSymbols(Uint8List bytes) => {
   for (final (:name, :defined, :weak) in _elfDynamicSymbols(bytes))
-    if (!defined && !weak && RegExp(r'^(_Z|__cxa_|__gxx_)').hasMatch(name))
+    if (!defined &&
+        !weak &&
+        RegExp(r'^(_Z|__cxa_|__gxx_)').hasMatch(name) &&
+        !_glibcCxaFunctions.contains(name))
       name,
+};
+
+const _glibcCxaFunctions = {
+  '__cxa_atexit',
+  '__cxa_finalize',
+  '__cxa_thread_atexit_impl',
 };
 
 /// Returns the names of all defined symbols in the `.dynsym` section of a
