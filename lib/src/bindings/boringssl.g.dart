@@ -32447,9 +32447,6 @@ final class DIST_POINT_NAME_st extends ffi.Struct {
   external int type;
 
   external UnnamedUnion$4 name;
-
-  /// If relativename then this contains the full distribution point name
-  external ffi.Pointer<X509_NAME> dpname;
 }
 
 /// A DIST_POINT_st, aka `DIST_POINT`, represents a DistributionPoint structure
