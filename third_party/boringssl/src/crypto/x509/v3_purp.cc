@@ -18,6 +18,7 @@
 #include <openssl/digest.h>
 #include <openssl/err.h>
 #include <openssl/mem.h>
+#include <openssl/nid.h>
 #include <openssl/obj.h>
 #include <openssl/stack.h>
 #include <openssl/x509.h>
@@ -142,30 +143,11 @@ int X509_supported_extension(const X509_EXTENSION *ex) {
          nid == NID_policy_constraints ||    //
          nid == NID_name_constraints ||      //
          nid == NID_policy_mappings ||       //
-         nid == NID_inhibit_any_policy ||
-         nid == NID_pe_mtcCertificationAuthority_draft;
+         nid == NID_inhibit_any_policy ||    //
+         nid == NID_pe_mtcCertificationAuthority_SHA256;
 }
 
-static int setup_dp(X509 *x, DIST_POINT *dp) {
-  if (!dp->distpoint || (dp->distpoint->type != 1)) {
-    return 1;
-  }
-  X509_NAME *iname = nullptr;
-  for (size_t i = 0; i < sk_GENERAL_NAME_num(dp->CRLissuer); i++) {
-    GENERAL_NAME *gen = sk_GENERAL_NAME_value(dp->CRLissuer, i);
-    if (gen->type == GEN_DIRNAME) {
-      iname = gen->d.directoryName;
-      break;
-    }
-  }
-  if (!iname) {
-    iname = X509_get_issuer_name(x);
-  }
-
-  return DIST_POINT_set_dpname(dp->distpoint, iname);
-}
-
-static int setup_crldp(X509 *x) {
+static int setup_crldp(const X509 *x) {
   int j;
   auto *impl = FromOpaque(x);
   impl->crldp.reset(reinterpret_cast<STACK_OF(DIST_POINT) *>(
@@ -173,15 +155,10 @@ static int setup_crldp(X509 *x) {
   if (impl->crldp == nullptr && j != -1) {
     return 0;
   }
-  for (size_t i = 0; i < sk_DIST_POINT_num(impl->crldp.get()); i++) {
-    if (!setup_dp(x, sk_DIST_POINT_value(impl->crldp.get(), i))) {
-      return 0;
-    }
-  }
   return 1;
 }
 
-int bssl::x509v3_cache_extensions(X509 *x) {
+int bssl::x509v3_cache_extensions(const X509 *x) {
   BASIC_CONSTRAINTS *bs;
   ASN1_BIT_STRING *usage;
   EXTENDED_KEY_USAGE *extusage;
@@ -365,7 +342,7 @@ static int check_ca(const X509 *x) {
 }
 
 int X509_check_ca(const X509 *x) {
-  if (!x509v3_cache_extensions(const_cast<X509*>(x))) {
+  if (!x509v3_cache_extensions(x)) {
     return 0;
   }
   return check_ca(x);
@@ -474,8 +451,8 @@ int X509_check_issued(const X509 *issuer, const X509 *subject) {
                     X509_get_issuer_name(subject))) {
     return X509_V_ERR_SUBJECT_ISSUER_MISMATCH;
   }
-  if (!x509v3_cache_extensions(const_cast<X509 *>(issuer)) ||
-      !x509v3_cache_extensions(const_cast<X509 *>(subject))) {
+  if (!x509v3_cache_extensions(issuer) ||
+      !x509v3_cache_extensions(subject)) {
     return X509_V_ERR_UNSPECIFIED;
   }
 
