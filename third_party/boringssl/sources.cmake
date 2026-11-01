@@ -95,6 +95,7 @@ set(crypto_sources
   ${BORINGSSL_ROOT}src/crypto/cpu_arm_linux.cc
   ${BORINGSSL_ROOT}src/crypto/cpu_intel.cc
   ${BORINGSSL_ROOT}src/crypto/crypto.cc
+  ${BORINGSSL_ROOT}src/crypto/curve25519/cpace.cc
   ${BORINGSSL_ROOT}src/crypto/curve25519/curve25519.cc
   ${BORINGSSL_ROOT}src/crypto/curve25519/curve25519_64_adx.cc
   ${BORINGSSL_ROOT}src/crypto/curve25519/spake25519.cc
@@ -121,9 +122,11 @@ set(crypto_sources
   ${BORINGSSL_ROOT}src/crypto/evp/p_ec.cc
   ${BORINGSSL_ROOT}src/crypto/evp/p_ed25519.cc
   ${BORINGSSL_ROOT}src/crypto/evp/p_hkdf.cc
+  ${BORINGSSL_ROOT}src/crypto/evp/p_keccak.cc
   ${BORINGSSL_ROOT}src/crypto/evp/p_mldsa.cc
   ${BORINGSSL_ROOT}src/crypto/evp/p_mlkem.cc
   ${BORINGSSL_ROOT}src/crypto/evp/p_rsa.cc
+  ${BORINGSSL_ROOT}src/crypto/evp/p_slhdsa.cc
   ${BORINGSSL_ROOT}src/crypto/evp/p_x25519.cc
   ${BORINGSSL_ROOT}src/crypto/evp/p_xwing.cc
   ${BORINGSSL_ROOT}src/crypto/evp/pbkdf.cc
